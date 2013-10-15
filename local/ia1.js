@@ -28,7 +28,7 @@ var debugMessage="";
 /* Id de l'IA */
 var id = 0;
 
-var DANGER_RANGE = 10;
+var DANGER_RANGE = 5;
 
 var current_turn = 0;
 
@@ -41,20 +41,9 @@ onmessage = function(event)
 	if(event.data != null) {
 		var turnMessage = event.data;
 		id = turnMessage.playerId;
-		postMessage(new TurnResult( getOrders(turnMessage.galaxy), '<div style="margin-left:10em"><br/>' + debugMessage + "</div>"));
+		postMessage(new TurnResult( getOrders(turnMessage.galaxy), debugMessage));
 	}
 	else postMessage("data null");
-};
-
-var setMessage = function(object)
-{
-	debugMessage = "";
-	if(typeof object == "string" && object != null && object != "")
-		debugMessage = object;
-	else
-		for(var data in object)
-			if(typeof object[data] != "function")
-				debugMessage += (data + " : " + object[data] + "<br/>");
 };
 
 /**
@@ -86,20 +75,16 @@ var getTravelDistanceBetween = function(planet1,planet2)
 	return Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED);
 }
 
-
-//AJOUT GETHELP IF PLANET.GETPOPIN(TURN-- gethelp^turn--)
-
-
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
 {
 	var result = new Array();
-	var PlanetPrevData = inDanger(planet,context);
+	var DANGERPop = popInTurn(planet,context,DANGER_RANGE);
 
-	if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
+	if (DANGERPop < 0)
 	{
-		result = result.concat(getHelp(planet,context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
+		result = result.concat(getHelp(planet,context,my_planets,-DANGERPop,DANGER_RANGE));
 	}
-	else if(true)
+	else if(DANGERPop >= 0)
 	{
 		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
 		planet.population = 0;
@@ -160,25 +145,6 @@ var popInTurn = function(planet, context, turn)
 		};
 	}
 
-	return result;
-}
-
-var inDanger = function(planet, context)
-{
-	var result = Array();
-
-	result.push(false);
-	for (var i = 0 ; i <= DANGER_RANGE ;i++)
-	{
-		var pop = popInTurn(planet,context,i);
-		if (pop <= 0)
-		{
-			result[0] = true;
-			result.push(pop);
-			result.push(i);
-			break;
-		}
-	};
 	return result;
 }
 
