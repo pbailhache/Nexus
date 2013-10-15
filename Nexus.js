@@ -28,6 +28,11 @@ var debugMessage="";
 /* Id de l'IA */
 var id = 0;
 
+var DANGER_RANGE = 5;
+
+var current_turn = 0;
+
+
 /**
 * @internal method
 */
@@ -48,9 +53,12 @@ onmessage = function(event)
 * @return result:Array<Order>
 */
 var getOrders = function(context) {
+	current_turn++;
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
 	var other_planets = GameUtil.getEnnemyPlanets(id, context);
+
+
 	if ( other_planets != null && other_planets.length > 0 )
 	{
 		for ( var i = 0; i<my_planets.length; i++ )
@@ -62,25 +70,34 @@ var getOrders = function(context) {
 	return result;
 };
 
+var getTravelDistanceBetween = function(planet1,planet2)
+{
+	return Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED);
+}
 
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
 {
 	var result = new Array();
-	if(planet.population >= 40)
+	var DANGERPop = popInTurn(planet,context,DANGER_RANGE);
+
+	if (DANGERPop < 0)
+	{
+		result = result.concat(getHelp(planet,context,my_planets,-DANGERPop,DANGER_RANGE));
+	}
+	else if(DANGERPop >= 0)
 	{
 		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
 		planet.population = 0;
 	}
 	else
 	{
-		//debugMessage = my_planets;
-		result = result.concat(getHelp(planet,context,my_planets,10));
+		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, 0));
 	}
 
 	return result ;
 };
 
-var getHelp = function(planet, context, my_planets, amount)
+var getHelp = function(planet, context, my_planets, amount,turn)
 {
 	var cpt = 0;
 	var friends = new Array();
@@ -89,7 +106,7 @@ var getHelp = function(planet, context, my_planets, amount)
 
 	for (var i = my_planets.length - 1; i >= 0; i--) { //Boucle pour chercher les planètes dispo pour aider, maybe mettre une condition sur la distance ou le type de planète (border ou core).
 		tmpPlanet = my_planets[i];
-		if (tmpPlanet != planet && tmpPlanet.population > amount)
+		if (tmpPlanet != planet && tmpPlanet.population > amount && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
 		{
 			cpt++;
 			friends.push(tmpPlanet); //Ajout dans la liste d'amis pour aider la planète
@@ -101,6 +118,32 @@ var getHelp = function(planet, context, my_planets, amount)
 		tmpPlanet.population -= Math.floor(amount/cpt); // Actualisation de la pop actuelle (avant le départ de l'ordre) pour ne pas envoyer plus que prévu.
 		result.push(new Order(tmpPlanet.id,planet.id,Math.floor(amount/cpt))); // On push un ordre pour chaque ami du montant désiré divisé par le nombre d'amis.
 	};
+
+	return result;
+}
+
+var popInTurn = function(planet, context, turn)
+{
+	var result = planet.population + turn * Game.PLANET_GROWTH;
+
+	if (context.fleet != null)
+	{
+		for (var i = context.fleet.length - 1; i >= 0; i--) 
+		{
+			var ship = context.fleet[i];
+			if (ship.target == planet && ship.creationTurn + ship.travelDuration - current_turn <= turn )
+			{
+				if (ship.owner.id == id)
+				{
+					result += ship.crew;
+				}
+				else
+				{
+					result -= ship.crew;
+				}
+			}
+		};
+	}
 
 	return result;
 }
