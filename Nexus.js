@@ -28,7 +28,7 @@ var debugMessage="";
 /* Id de l'IA */
 var id = 0;
 
-var DANGER_RANGE = 5;
+var DANGER_RANGE = 10;
 
 var current_turn = 0;
 
@@ -75,16 +75,20 @@ var getTravelDistanceBetween = function(planet1,planet2)
 	return Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED);
 }
 
+
+//AJOUT GETHELP IF PLANET.GETPOPIN(TURN-- gethelp^turn--)
+
+
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
 {
 	var result = new Array();
-	var DANGERPop = popInTurn(planet,context,DANGER_RANGE);
+	var PlanetPrevData = inDanger(planet,context);
 
-	if (DANGERPop < 0)
+	if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
 	{
-		result = result.concat(getHelp(planet,context,my_planets,-DANGERPop,DANGER_RANGE));
+		result = result.concat(getHelp(planet,context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
 	}
-	else if(DANGERPop >= 0)
+	else if(true)
 	{
 		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
 		planet.population = 0;
@@ -145,6 +149,25 @@ var popInTurn = function(planet, context, turn)
 		};
 	}
 
+	return result;
+}
+
+var inDanger = function(planet, context)
+{
+	var result = Array();
+
+	result.push(false);
+	for (var i = 0 ; i <= DANGER_RANGE ;i++)
+	{
+		var pop = popInTurn(planet,context,i);
+		if (pop <= 0)
+		{
+			result[0] = true;
+			result.push(pop);
+			result.push(i);
+			break;
+		}
+	};
 	return result;
 }
 
