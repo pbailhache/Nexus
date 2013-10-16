@@ -56,6 +56,9 @@ var objectToHTML = function(object)
 	{
 		switch(typeof object[data])
 		{
+			case "number":
+				string += data + " : " + object[data] + "<br/>";
+				break;
 			case "string":
 				string += data + ' : "' + object[data] + '"<br/>';
 				break;
@@ -68,9 +71,7 @@ var objectToHTML = function(object)
 			case "object":
 				string += object[data] + " " + data + ' : <div style="margin-left:4em">'  + objectToHTML(object[data])+  "</div>";
 				break;
-			case "number":
 			default:
-				string += data + " : " + object[data] + "<br/>";
 				break;
 		}
 	}
@@ -79,27 +80,32 @@ var objectToHTML = function(object)
 
 var setMessage = function(object)
 {
-	debugMessage = "";
 	if(object != null && object != "")
 	{
 		switch(typeof object)
 		{
-			case "boolean":
-				debugMessage = object ? "TRUE" : "FALSE";
-				break;
-			case "function":
-				debugMessage = "function : " + object;
-				break;
-			case "object":
-				debugMessage = objectToHTML(object);
-				break;
 			case "string":
 			case "number":
+				debugMessage += object;
+				break;
+			case "boolean":
+				debugMessage += object ? "TRUE" : "FALSE";
+				break;
+			case "function":
+				debugMessage += "function : " + object;
+				break;
+			case "object":
+				debugMessage += objectToHTML(object);
+				break;
 			default:
-				debugMessage = object;
 				break;
 		}			
 	}
+};
+
+var resetMessage = function ()
+{
+	debugMessage = "";
 };
 
 /**
@@ -114,6 +120,7 @@ var getOrders = function(context)
 	{
 		sfdoksigjdfkglj;
 	}
+	resetMessage();
 	current_turn++;
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
