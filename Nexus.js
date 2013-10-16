@@ -41,20 +41,62 @@ onmessage = function(event)
 	if(event.data != null) {
 		var turnMessage = event.data;
 		id = turnMessage.playerId;
-		postMessage(new TurnResult( getOrders(turnMessage.galaxy), '<div style="margin-left:10em"><br/>' + debugMessage + "</div>"));
+		postMessage(new TurnResult( getOrders(turnMessage.galaxy), '<div style="margin-left:4em"><br/>' + debugMessage + "</div>"));
 	}
 	else postMessage("data null");
+};
+
+var objectToHTML = function(object)
+{
+	string = "";
+	for(var data in object)
+	{
+		switch(typeof object[data])
+		{
+			case "string":
+				string += data + ' : "' + object[data] + '"<br/>';
+				break;
+			case "boolean":
+				string += data + " : " + object[data] ? "TRUE" : "FALSE" + "<br/>";
+				break;
+			case "function":
+				string += data + " : function : " + object[data] + "<br/>";
+				break;
+			case "object":
+				string += object[data] + " " + data + ' : <div style="margin-left:4em">'  + objectToHTML(object[data])+  "</div>";
+				break;
+			case "number":
+			default:
+				string += data + " : " + object[data] + "<br/>";
+				break;
+		}
+	}
+	return string
 };
 
 var setMessage = function(object)
 {
 	debugMessage = "";
-	if(typeof object == "string" && object != null && object != "")
-		debugMessage = object;
-	else
-		for(var data in object)
-			if(typeof object[data] != "function")
-				debugMessage += (data + " : " + object[data] + "<br/>");
+	if(object != null && object != "")
+	{
+		switch(typeof object)
+		{
+			case "boolean":
+				debugMessage = object ? "TRUE" : "FALSE";
+				break;
+			case "function":
+				debugMessage = "function : " + object;
+				break;
+			case "object":
+				debugMessage = objectToHTML(object);
+				break;
+			case "string":
+			case "number":
+			default:
+				debugMessage = object;
+				break;
+		}			
+	}
 };
 
 /**
