@@ -28,10 +28,13 @@ var debugMessage="";
 /* Id de l'IA */
 var id = 0;
 
-var DANGER_RANGE = 10;
+var ennemy_id = -1;
+
+var DANGER_RANGE = 50;
 
 var current_turn = 0;
 
+var crash = 0;
 
 /**
 * @internal method
@@ -105,18 +108,56 @@ var setMessage = function(object)
 * @param context:Galaxy
 * @return result:Array<Order>
 */
-var getOrders = function(context) {
+var getOrders = function(context) 
+{
+	if (crash)
+	{
+		sfdoksigjdfkglj;
+	}
 	current_turn++;
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
 	var other_planets = GameUtil.getEnnemyPlanets(id, context);
+
+	//RECUP DE l'ID DE L'ENNEMY
+
+	if (context.fleet !=null && ennemy_id == -1)
+	{
+		for (var i = context.fleet.length - 1; i >= 0; i--) 
+		{
+			if(context.fleet[i].owner.id != id)
+			{
+				ennemy_id = context.fleet[i].owner.id;
+				//setMessage(context.fleet[i].owner);
+			}
+		};
+	}
+
+	//END
 
 
 	if ( other_planets != null && other_planets.length > 0 )
 	{
 		for ( var i = 0; i<my_planets.length; i++ )
 		{
+			//ICI demande d'aide de la part des planètes pour éviter que chaque planète envoie ses ordres puis qu'une planète demande de l'aide  
+			//et se retrouve donc sans aide vu que les ordres d'attaques sont partis
+
+			var PlanetPrevData = inDanger(my_planets[i],context);
+			if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
+			{
+				crash = 1
+				result = result.concat(getHelp(my_planets[i],context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
+				setMessage("HELP ME  ="+objectToHTML(my_planets[i])+"IN TURN = "+PlanetPrevData[2]+"|POP ="+(PlanetPrevData[1]+objectToHTML(result)));
+			}
+
 			result = result.concat(getOrderFromPlanet(my_planets[i],context,my_planets,other_planets));
+
+			//MANAGE SURPLUS
+
+			result = result.concat(manageOverPop(my_planets[i],context,my_planets));
+
+			//END
 		}
 	}
 
@@ -128,8 +169,39 @@ var getTravelDistanceBetween = function(planet1,planet2)
 	return Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED);
 }
 
+var manageOverPop = function(planet,context,my_planets)
+{
+	var result = new Array();
+	if(popInTurn(planet,context,1) > PlanetPopulation.getMaxPopulation(planet.size))
+	{
+		//ICI on cherche parmi nos planètes celle qui est le plus en danger --ie la planète qui a la pop la plus basse pour la distance entre les deux planètes.
+		// Exemple avec une planète qui recoit un vaisseau de 40 et se retrouve en surplus de 30.
+		// Elle cherche parmi les autres planètes et trouve une planète qui est à 5 de range avec une pop prévu de 10
+		// Une autre à 8 de range avec une pop prévu de 5
+		// Elle envoie le surplus à celle à 9 de distance 
+		// a tuner je pense pour voir ce qui martche le mieux sur le rapport pop/distance
+		var min = 500;
+		var result_planet;
+		var candidat;
+		var candidatPop;
 
-//AJOUT GETHELP IF PLANET.GETPOPIN(TURN-- gethelp^turn--)
+		for (var i = my_planets.length - 1; i >= 0; i--) 
+		{
+			candidat = my_planets[i] ;
+			candidatPop = popInTurn(candidat,context,getTravelDistanceBetween(planet,candidat));
+
+			if(candidat != planet && candidatPop<min)
+			{
+				min = candidatPop;
+				result_planet = candidat;
+			}
+		};
+
+		var pop = popInTurn(planet,context,1) - PlanetPopulation.getMaxPopulation(planet.size);
+		result.push(new Order(planet.id, candidat.id, pop));
+	}
+	return result;
+}
 
 
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
@@ -137,19 +209,21 @@ var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
 	var result = new Array();
 	var PlanetPrevData = inDanger(planet,context);
 
-	if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
+	if(true)
 	{
-		result = result.concat(getHelp(planet,context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
-	}
-	else if(true)
-	{
-		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
-		planet.population = 0;
+		var target = getNearestPlanet(planet,other_planets);
+		if (target.owner.id != id && target.owner.id != ennemy_id)
+		{
+			//setMessage("|ID CIBLE|"+target.id+"|MY ID|"+id+"|ID ENEMY|"+ennemy_id);
+			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
+			planet.population = 0;
+		}
 	}
 	else
 	{
 		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, 0));
 	}
+	//setMessage(planet);
 
 	return result ;
 };
@@ -160,22 +234,32 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 	var friends = new Array();
 	var result = new Array();
 	var tmpPlanet;
+	var totalHelp = 0;
+	var totalPossible = 0;
 
 	for (var i = my_planets.length - 1; i >= 0; i--) { //Boucle pour chercher les planètes dispo pour aider, maybe mettre une condition sur la distance ou le type de planète (border ou core).
 		tmpPlanet = my_planets[i];
-		if (tmpPlanet != planet && tmpPlanet.population > amount && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
+		if (tmpPlanet != planet && tmpPlanet.population > 10 && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
 		{
+			totalPossible += tmpPlanet.population;
 			cpt++;
 			friends.push(tmpPlanet); //Ajout dans la liste d'amis pour aider la planète
 		}
 	};
 
-	for (var i = friends.length - 1; i >= 0; i--) {
-		tmpPlanet = friends[i];
-		tmpPlanet.population -= Math.floor(amount/cpt); // Actualisation de la pop actuelle (avant le départ de l'ordre) pour ne pas envoyer plus que prévu.
-		result.push(new Order(tmpPlanet.id,planet.id,Math.floor(amount/cpt))); // On push un ordre pour chaque ami du montant désiré divisé par le nombre d'amis.
-	};
-
+	if (amount <= totalPossible) 
+	{
+		while (totalHelp <= amount)
+		{
+			for (var i = friends.length - 1; i >= 0; i--) 
+			{
+				tmpPlanet = friends[i];
+				tmpPlanet.population--;
+				result.push(new Order(tmpPlanet.id,planet.id,1));
+				totalHelp++;
+			};
+		};
+	}
 	return result;
 }
 
@@ -213,12 +297,11 @@ var inDanger = function(planet, context)
 	for (var i = 0 ; i <= DANGER_RANGE ;i++)
 	{
 		var pop = popInTurn(planet,context,i);
-		if (pop <= 0)
+		if (pop <= 10)
 		{
 			result[0] = true;
-			result.push(pop);
-			result.push(i);
-			break;
+			result[1] = pop-1;
+			result[2] = i;
 		}
 	};
 	return result;
@@ -240,6 +323,7 @@ var getNearestPlanet = function( source, candidats )
 	}
 	return result;
 }
+
 
 /**
 * @model Galaxy
