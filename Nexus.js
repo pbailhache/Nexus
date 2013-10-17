@@ -122,6 +122,7 @@ var getOrders = function(context)
 	}
 	resetMessage();
 	current_turn++;
+	setMessage(current_turn+"<br/>");
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
 	var other_planets = GameUtil.getEnnemyPlanets(id, context);
@@ -135,7 +136,6 @@ var getOrders = function(context)
 			if(context.fleet[i].owner.id != id)
 			{
 				ennemy_id = context.fleet[i].owner.id;
-				//setMessage(context.fleet[i].owner);
 			}
 		};
 	}
@@ -153,12 +153,11 @@ var getOrders = function(context)
 			var PlanetPrevData = inDanger(my_planets[i],context);
 			if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
 			{
-				crash = 1
+				//crash = 1
 				result = result.concat(getHelp(my_planets[i],context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
-				setMessage("HELP ME  ="+objectToHTML(my_planets[i])+"IN TURN = "+PlanetPrevData[2]+"|POP ="+(PlanetPrevData[1]+objectToHTML(result)));
 			}
 
-			result = result.concat(getOrderFromPlanet(my_planets[i],context,my_planets,other_planets));
+			result = result.concat(getOrderFromPlanet(my_planets[i],context,my_planets,other_planets,PlanetPrevData));
 
 			//MANAGE SURPLUS
 
@@ -205,18 +204,19 @@ var manageOverPop = function(planet,context,my_planets)
 		};
 
 		var pop = popInTurn(planet,context,1) - PlanetPopulation.getMaxPopulation(planet.size);
+		planet.population -= pop;
 		result.push(new Order(planet.id, candidat.id, pop));
 	}
 	return result;
 }
 
 
-var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
+var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
 {
 	var result = new Array();
 	var PlanetPrevData = inDanger(planet,context);
 
-	if(true)
+	if(!data[0])
 	{
 		var target = getNearestPlanet(planet,other_planets);
 		if (target.owner.id != id && target.owner.id != ennemy_id)
@@ -228,7 +228,7 @@ var getOrderFromPlanet = function(planet,context,my_planets,other_planets)
 	}
 	else
 	{
-		result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, 0));
+		//result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, 0));
 	}
 	//setMessage(planet);
 
@@ -246,7 +246,8 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 
 	for (var i = my_planets.length - 1; i >= 0; i--) { //Boucle pour chercher les planètes dispo pour aider, maybe mettre une condition sur la distance ou le type de planète (border ou core).
 		tmpPlanet = my_planets[i];
-		if (tmpPlanet != planet && tmpPlanet.population > 10 && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
+		var data = inDanger(tmpPlanet,context);
+		if (tmpPlanet != planet && !data[0] && tmpPlanet.population > 0 && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
 		{
 			totalPossible += tmpPlanet.population;
 			cpt++;
@@ -254,18 +255,28 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 		}
 	};
 
+	//setMessage("HELP ME  ="+objectToHTML(planet)+"IN TURN = "+turn+"|AMOUNT ="+amount+"totalPossible = "+totalPossible);
+
+
 	if (amount <= totalPossible) 
 	{
-		while (totalHelp <= amount)
+		while (totalHelp < amount)
 		{
 			for (var i = friends.length - 1; i >= 0; i--) 
 			{
+
+				//setMessage("JE AIDE ="+objectToHTML(friends[i])+"TOI "+objectToHTML(planet)+"DE UN");
+				//setMessage("totalHelp = "+totalHelp);
 				tmpPlanet = friends[i];
-				tmpPlanet.population--;
-				result.push(new Order(tmpPlanet.id,planet.id,1));
-				totalHelp++;
+				if(tmpPlanet.population > 0)
+				{
+					tmpPlanet.population--;
+					result.push(new Order(tmpPlanet.id,planet.id,1));
+					totalHelp++;
+				}
 			};
 		};
+		//crash = 1;
 	}
 	return result;
 }
@@ -304,7 +315,7 @@ var inDanger = function(planet, context)
 	for (var i = 0 ; i <= DANGER_RANGE ;i++)
 	{
 		var pop = popInTurn(planet,context,i);
-		if (pop <= 10)
+		if (pop <= 15)
 		{
 			result[0] = true;
 			result[1] = pop-1;
