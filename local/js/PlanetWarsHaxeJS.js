@@ -227,15 +227,25 @@ com.tamina.planetwars.core.GameEngine.prototype = {
 		}
 		if(playerOneNumUnits == 0) this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player2,"Vainqueur par KO",this._player1,this._player2)); else if(playerTwoNumUnits == 0) this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player1,"Vainqueur par KO",this._player1,this._player2));
 	}
-	,computeCurrentTurn: function() {
-		this.parseOrder();
-		this.moveShips();
-		this.increasePlanetGrowth();
-		this.updatePlayerScore();
-		bean.fire(com.tamina.planetwars.core.EventDispatcher.getInstance(),"turnUpdate");
-		this._currentTurn++;
-		if(this._isComputing && this._currentTurn >= this._maxNumTurn) {
-			if(this.playerOneScore > this.playerTwoScore) this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player1,"DUREE MAX ATTEINTE",this._player1,this._player2)); else this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player2,"DUREE MAX ATTEINTE",this._player1,this._player2));
+	,traceScrollBottom: function()
+	{
+		var trace = window.document.getElementsByClassName("trace")[0];
+		trace.scrollTop = trace.scrollHeight;
+	}
+	,computeCurrentTurn: function() 
+	{
+		this.traceScrollBottom();
+		if(true || window.confirm("Appuyer sur OK pour continuer"))
+		{
+			this.parseOrder();
+			this.moveShips();
+			this.increasePlanetGrowth();
+			this.updatePlayerScore();
+			bean.fire(com.tamina.planetwars.core.EventDispatcher.getInstance(),"turnUpdate");
+			this._currentTurn++;
+			if(this._isComputing && this._currentTurn >= this._maxNumTurn) {
+				if(this.playerOneScore > this.playerTwoScore) this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player1,"DUREE MAX ATTEINTE",this._player1,this._player2)); else this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player2,"DUREE MAX ATTEINTE",this._player1,this._player2));
+			}
 		}
 	}
 	,resolveConflict: function(attacker,defender) {
