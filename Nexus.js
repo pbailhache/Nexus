@@ -30,9 +30,15 @@ var id = 0;
 
 var ennemy_id = -1;
 
-var DANGER_RANGE = 50;
 
-var current_turn = 0;
+// CONSTANTES DE GESTION DE l'IA
+var DANGER_RANGE = 50;
+var REST_POP = 50;
+var BORDER_POP = 50;
+var BORDER_RANGE = 2;
+
+
+var current_turn = -1;
 
 var crash = 0;
 
@@ -225,7 +231,7 @@ var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
 		if (true || target.owner.id != id && target.owner.id != ennemy_id)
 		{
 			//setMessage("|ID CIBLE|"+target.id+"|MY ID|"+id+"|ID ENEMY|"+ennemy_id);
-			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
+			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, Math.floor(planet.population/2) ));
 			planet.population = 0;
 		}
 	}
@@ -289,8 +295,7 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 			tmpPlanet = friends[i];
 			result.push(new Order(tmpPlanet.id,planet.id,toAgglo[i]));
 		};
-
-
+		setMessage(result);
 	}
 	return result;
 }
@@ -330,13 +335,47 @@ var inDanger = function(planet, context)
 	for (var i = 0 ; i <= DANGER_RANGE ;i++)
 	{
 		var pop = popInTurn(planet,context,i);
-		if (pop <= 15)
+		if (pop <= REST_POP)
 		{
 			result[0] = true;
-			result[1] = pop-1;
+			if (pop < 0)
+			{
+				result[1] = -pop;
+				setMessage("<br/><br/>I NEED HELP = "+objectToHTML(planet)+"AMOUNT ="+result[1])
+			}
+			else
+			{
+				result[1] = REST_POP - pop;
+			}
 			result[2] = i;
+			break;
+		}
+		else if(inBorder(planet,context) && planet.population <= BORDER_POP)
+		{
+			//setMessage("BORDER PROT")
+			result[0] = true;
+			result[1] = BORDER_POP-planet.population;
+			result[2] = DANGER_RANGE; // Toutes les planètes envoient de l'aide
+			break;
 		}
 	};
+	return result;
+}
+
+var inBorder = function(planet,context)
+{
+	var result = false;
+
+	var other_planets = GameUtil.getEnnemyPlanets(id, context);
+
+	for (var i = other_planets.length - 1; i >= 0; i--) 
+	{
+		if(other_planets[i].owner.id == ennemy_id && getTravelDistanceBetween(other_planets[i],planet) <= BORDER_RANGE)
+		{
+			result = true;
+		}
+	};
+
 	return result;
 }
 
