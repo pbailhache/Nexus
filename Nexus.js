@@ -122,7 +122,8 @@ var getOrders = function(context)
 	}
 	resetMessage();
 	current_turn++;
-	setMessage(current_turn+"<br/>");
+	setMessage("Tour = "+current_turn+"<br/><br/>");
+	//setMessage(context);
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
 	var other_planets = GameUtil.getEnnemyPlanets(id, context);
@@ -203,12 +204,14 @@ var manageOverPop = function(planet,context,my_planets)
 			}
 		};
 
-		var pop = popInTurn(planet,context,1) - PlanetPopulation.getMaxPopulation(planet.size);
-		planet.population -= pop;
+		var pop = Math.min((popInTurn(planet,context,1) - PlanetPopulation.getMaxPopulation(planet.size)), planet.population);
 		result.push(new Order(planet.id, candidat.id, pop));
+		planet.population -= pop;
 	}
 	return result;
 }
+
+
 
 
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
@@ -219,7 +222,7 @@ var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
 	if(!data[0])
 	{
 		var target = getNearestPlanet(planet,other_planets);
-		if (target.owner.id != id && target.owner.id != ennemy_id)
+		if (true || target.owner.id != id && target.owner.id != ennemy_id)
 		{
 			//setMessage("|ID CIBLE|"+target.id+"|MY ID|"+id+"|ID ENEMY|"+ennemy_id);
 			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, planet.population ));
@@ -260,26 +263,38 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 
 	if (amount <= totalPossible) 
 	{
+		var toAgglo = new Array();
+		for (var i = friends.length - 1; i >= 0; i--) 
+		{
+			toAgglo[i]=0;
+		};
+
+
 		while (totalHelp < amount)
 		{
 			for (var i = friends.length - 1; i >= 0; i--) 
 			{
-
-				//setMessage("JE AIDE ="+objectToHTML(friends[i])+"TOI "+objectToHTML(planet)+"DE UN");
-				//setMessage("totalHelp = "+totalHelp);
 				tmpPlanet = friends[i];
 				if(tmpPlanet.population > 0)
 				{
 					tmpPlanet.population--;
-					result.push(new Order(tmpPlanet.id,planet.id,1));
+					toAgglo[i] +=1;
 					totalHelp++;
 				}
 			};
 		};
-		//crash = 1;
+		//AGGLOMERATION DES ORDRES
+		for (var i = friends.length - 1; i >= 0; i--) 
+		{
+			tmpPlanet = friends[i];
+			result.push(new Order(tmpPlanet.id,planet.id,toAgglo[i]));
+		};
+
+
 	}
 	return result;
 }
+
 
 var popInTurn = function(planet, context, turn)
 {
