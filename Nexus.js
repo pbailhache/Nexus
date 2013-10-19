@@ -30,12 +30,15 @@ var id = 0;
 
 var ennemy_id = -1;
 
+var debug = false;
+
 
 // CONSTANTES DE GESTION DE l'IA
 var DANGER_RANGE = 50;
-var REST_POP = 50;
-var BORDER_POP = 50;
-var BORDER_RANGE = 2;
+var REST_POP = 90;
+var BORDER_POP = 100;
+var BORDER_RANGE = 4;
+var PERCENT_POP = 3/4;
 
 
 var current_turn = -1;
@@ -84,6 +87,25 @@ var objectToHTML = function(object)
 	return string
 };
 
+var arrayToHTML = function(array)
+{
+	var result ='<br/><div style="margin-left:4em">';
+
+	if (array.length == 0)
+	{
+		result += "null";
+	}
+
+	for (var i = 0; i <= array.length - 1; i++) {
+		result+= objectToHTML(array[i]);
+		result+= "<br/>";
+	};
+
+	result += "</div>";
+
+	return result;
+}
+
 var setMessage = function(object)
 {
 	if(object != null && object != "")
@@ -122,7 +144,7 @@ var resetMessage = function ()
 */
 var getOrders = function(context) 
 {
-	if (crash)
+	if (crash || (current_turn == 50 && debug))
 	{
 		sfdoksigjdfkglj;
 	}
@@ -133,6 +155,19 @@ var getOrders = function(context)
 	var result = new Array();
 	var my_planets = GameUtil.getPlayerPlanets( id, context );
 	var other_planets = GameUtil.getEnnemyPlanets(id, context);
+
+	if (debug)
+	{
+		setMessage("=============================================");
+		setMessage("<br/>")
+		setMessage("my_planets = "+arrayToHTML(my_planets)+"<br/>");
+		setMessage("=============================================");
+		setMessage("<br/>")
+		setMessage("other_planets = "+arrayToHTML(other_planets)+"<br/>");
+		setMessage("=============================================");
+		setMessage("<br/>")
+
+	}
 
 	//RECUP DE l'ID DE L'ENNEMY
 
@@ -149,43 +184,60 @@ var getOrders = function(context)
 
 	//END
 
-
 	if ( other_planets != null && other_planets.length > 0 )
 	{
 		for ( var i = 0; i<my_planets.length; i++ )
 		{
-			//ICI demande d'aide de la part des planètes pour éviter que chaque planète envoie ses ordres puis qu'une planète demande de l'aide  
-			//et se retrouve donc sans aide vu que les ordres d'attaques sont partis
-
 			var PlanetPrevData = inDanger(my_planets[i],context);
 			if (PlanetPrevData[0] ) //DANGER (inDanger retourne true avec la pop prévu et le tour prévu de l'attaque)
 			{
-				//crash = 1
 				result = result.concat(getHelp(my_planets[i],context,my_planets,PlanetPrevData[1],PlanetPrevData[2]));
 			}
+		}
 
+		for ( var i = 0; i<my_planets.length; i++ )
+		{
 			result = result.concat(getOrderFromPlanet(my_planets[i],context,my_planets,other_planets,PlanetPrevData));
+		}
 
-			//MANAGE SURPLUS
-
+		for ( var i = 0; i<my_planets.length; i++ )
+		{
 			result = result.concat(manageOverPop(my_planets[i],context,my_planets));
-
-			//END
 		}
 	}
 
+	setMessage("END of Tour = "+current_turn+"<br/><br/>");
 	return result;
 };
 
 var getTravelDistanceBetween = function(planet1,planet2)
 {
+	if (debug)
+	{
+		setMessage("getTravelDistanceBetween("+planet1.id+","+planet2.id+") = "+Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED)+"<br/>");
+	}
 	return Math.ceil(GameUtil.getDistanceBetween(new Point(planet1.x,planet1.y),new Point(planet2.x,planet2.y)) / Game.SHIP_SPEED);
+}
+
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
 }
 
 var manageOverPop = function(planet,context,my_planets)
 {
+	if (debug)
+	{
+		setMessage("=+=+=+=+=+=+=+=+=+=+=+=+=+=++=+=+=+=+=+=+=+=+==+=+");
+		setMessage("<br/>")
+	}
 	var result = new Array();
-	if(popInTurn(planet,context,1) > PlanetPopulation.getMaxPopulation(planet.size))
+	if(popInTurn(planet,context,1) >= PlanetPopulation.getMaxPopulation(planet.size) && !inBorder(planet,context) )
 	{
 		//ICI on cherche parmi nos planètes celle qui est le plus en danger --ie la planète qui a la pop la plus basse pour la distance entre les deux planètes.
 		// Exemple avec une planète qui recoit un vaisseau de 40 et se retrouve en surplus de 30.
@@ -193,26 +245,35 @@ var manageOverPop = function(planet,context,my_planets)
 		// Une autre à 8 de range avec une pop prévu de 5
 		// Elle envoie le surplus à celle à 9 de distance 
 		// a tuner je pense pour voir ce qui martche le mieux sur le rapport pop/distance
-		var min = 500;
+		var min = 5000;
 		var result_planet;
 		var candidat;
 		var candidatPop;
+		var rand_my_planets = shuffleArray(my_planets);
 
-		for (var i = my_planets.length - 1; i >= 0; i--) 
+		for (var i = rand_my_planets.length - 1; i >= 0; i--) 
 		{
-			candidat = my_planets[i] ;
+			candidat = rand_my_planets[i] ;
 			candidatPop = popInTurn(candidat,context,getTravelDistanceBetween(planet,candidat));
 
-			if(candidat != planet && candidatPop<min)
+			if(candidat != planet && candidatPop<min && candidatPop != PlanetPopulation.getMaxPopulation(candidat))
 			{
 				min = candidatPop;
 				result_planet = candidat;
 			}
 		};
 
-		var pop = Math.min((popInTurn(planet,context,1) - PlanetPopulation.getMaxPopulation(planet.size)), planet.population);
+		var pop = Math.min((popInTurn(planet,context,1)+5 - PlanetPopulation.getMaxPopulation(planet.size)), planet.population);
 		result.push(new Order(planet.id, candidat.id, pop));
 		planet.population -= pop;
+	}
+
+	if (debug)
+	{
+		setMessage("manageOverPop("+planet.id+") = "+arrayToHTML(result)+"<br/>");
+		setMessage("=+=+=+=+=+=+=+=+=+=+=+=+=+=++=+=+=+=+=+=+=+=+==+=+");
+		setMessage("<br/>")
+
 	}
 	return result;
 }
@@ -222,17 +283,23 @@ var manageOverPop = function(planet,context,my_planets)
 
 var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
 {
+	if (debug)
+	{
+		setMessage("/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/");
+		setMessage("<br/>")
+	}
+
 	var result = new Array();
 	var PlanetPrevData = inDanger(planet,context);
 
-	if(!data[0])
+	if(((!data[0] && !inBorder(planet,context)) || (!data[0] && inBorder(planet,context))) && PlanetPopulation.getMaxPopulation(planet.size)/2 <= planet.population)
 	{
 		var target = getNearestPlanet(planet,other_planets);
 		if (true || target.owner.id != id && target.owner.id != ennemy_id)
 		{
 			//setMessage("|ID CIBLE|"+target.id+"|MY ID|"+id+"|ID ENEMY|"+ennemy_id);
-			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, Math.floor(planet.population/2) ));
-			planet.population = 0;
+			result.push(new Order( planet.id, getNearestPlanet(planet,other_planets).id, Math.floor(planet.population*PERCENT_POP) ));
+			planet.population -= Math.floor(planet.population*PERCENT_POP);
 		}
 	}
 	else
@@ -241,11 +308,24 @@ var getOrderFromPlanet = function(planet,context,my_planets,other_planets,data)
 	}
 	//setMessage(planet);
 
+	if (debug)
+	{
+		setMessage("getOrderFromPlanet("+planet.id+") = "+arrayToHTML(result)+"<br/>");
+		setMessage("/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/+/");
+		setMessage("<br/>")
+
+	}
 	return result ;
 };
 
 var getHelp = function(planet, context, my_planets, amount,turn)
 {
+	if (debug)
+	{
+		setMessage("/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/");
+		setMessage("<br/>")
+	}
+
 	var cpt = 0;
 	var friends = new Array();
 	var result = new Array();
@@ -253,57 +333,97 @@ var getHelp = function(planet, context, my_planets, amount,turn)
 	var totalHelp = 0;
 	var totalPossible = 0;
 
-	for (var i = my_planets.length - 1; i >= 0; i--) { //Boucle pour chercher les planètes dispo pour aider, maybe mettre une condition sur la distance ou le type de planète (border ou core).
-		tmpPlanet = my_planets[i];
-		var data = inDanger(tmpPlanet,context);
-		if (tmpPlanet != planet && !data[0] && tmpPlanet.population > 0 && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
-		{
-			totalPossible += tmpPlanet.population;
-			cpt++;
-			friends.push(tmpPlanet); //Ajout dans la liste d'amis pour aider la planète
-		}
-	};
+		for (var i = my_planets.length - 1; i >= 0; i--) { //Boucle pour chercher les planètes dispo pour aider, maybe mettre une condition sur la distance ou le type de planète (border ou core).
+			tmpPlanet = my_planets[i];
+			if (tmpPlanet != planet)
+			{
+				var data = inDanger(tmpPlanet,context);
+				if (!data[0] && tmpPlanet.population > 0 && getTravelDistanceBetween(tmpPlanet,planet) <= turn)
+				{
+					totalPossible += tmpPlanet.population;
+					cpt++;
+					friends.push(tmpPlanet); //Ajout dans la liste d'amis pour aider la planète
+				}
+			}
+		};
 
-	//setMessage("HELP ME  ="+objectToHTML(planet)+"IN TURN = "+turn+"|AMOUNT ="+amount+"totalPossible = "+totalPossible);
+		//setMessage("HELP ME  ="+objectToHTML(planet)+"IN TURN = "+turn+"|AMOUNT ="+amount+"totalPossible = "+totalPossible);
 
 
-	if (amount <= totalPossible) 
-	{
+		//setMessage("totalPossible = "+totalPossible+"<br/>");
+		//setMessage("Amount = "+amount+"<br/>");
+
 		var toAgglo = new Array();
 		for (var i = friends.length - 1; i >= 0; i--) 
 		{
 			toAgglo[i]=0;
 		};
 
-
-		while (totalHelp < amount)
+		if (amount <= totalPossible && amount <= PlanetPopulation.getMaxPopulation(planet.size)) 
 		{
+			while (totalHelp < amount)
+			{
+				for (var i = friends.length - 1; i >= 0; i--) 
+				{
+					tmpPlanet = friends[i];
+					if(tmpPlanet.population > 0)
+					{
+						tmpPlanet.population--;
+						toAgglo[i] +=1;
+						totalHelp++;
+					}
+				};
+			};
+			//AGGLOMERATION DES ORDRES
 			for (var i = friends.length - 1; i >= 0; i--) 
 			{
 				tmpPlanet = friends[i];
-				if(tmpPlanet.population > 0)
+				if (toAgglo[i] != 0) 
 				{
-					tmpPlanet.population--;
-					toAgglo[i] +=1;
-					totalHelp++;
-				}
+					result.push(new Order(tmpPlanet.id,planet.id,toAgglo[i]));
+				};
 			};
-		};
-		//AGGLOMERATION DES ORDRES
-		for (var i = friends.length - 1; i >= 0; i--) 
+		}
+		else
 		{
-			tmpPlanet = friends[i];
-			result.push(new Order(tmpPlanet.id,planet.id,toAgglo[i]));
-		};
-		setMessage(result);
-	}
+			while (totalHelp < 5 && amount <= totalPossible)
+			{
+				for (var i = friends.length - 1; i >= 0; i--) 
+				{
+					tmpPlanet = friends[i];
+					if(tmpPlanet.population > 0)
+					{
+						tmpPlanet.population--;
+						toAgglo[i] +=1;
+						totalHelp++;
+					}
+				};
+			};
+			//AGGLOMERATION DES ORDRES
+			for (var i = friends.length - 1; i >= 0; i--) 
+			{
+				tmpPlanet = friends[i];
+				if (toAgglo[i] != 0) 
+				{
+					result.push(new Order(tmpPlanet.id,planet.id,toAgglo[i]));
+				};
+			};
+		}
+
+		if (debug)
+		{
+			setMessage("getHelp("+planet.id+","+amount+","+turn+") = "+arrayToHTML(result)+"<br/>");
+			setMessage("/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/");
+			setMessage("<br/>")
+		}
+
 	return result;
 }
 
 
 var popInTurn = function(planet, context, turn)
 {
-	var result = planet.population + turn * Game.PLANET_GROWTH;
+	var result =  Math.min((planet.population + turn * Game.PLANET_GROWTH),PlanetPopulation.getMaxPopulation(planet.size)); ;
 
 	if (context.fleet != null)
 	{
@@ -323,7 +443,11 @@ var popInTurn = function(planet, context, turn)
 			}
 		};
 	}
+	if (debug)
+	{
+		setMessage("popInTurn("+planet.id+","+turn+") = "+result+"<br/>");
 
+	} 
 	return result;
 }
 
@@ -331,21 +455,24 @@ var inDanger = function(planet, context)
 {
 	var result = Array();
 
-	result.push(false);
+	result[0] = false;
+	result[1] = 0;
+	result[2] = 0;
+
 	for (var i = 0 ; i <= DANGER_RANGE ;i++)
 	{
 		var pop = popInTurn(planet,context,i);
-		if (pop <= REST_POP)
+		if (pop <= 0)
 		{
 			result[0] = true;
 			if (pop < 0)
 			{
 				result[1] = -pop;
-				setMessage("<br/><br/>I NEED HELP = "+objectToHTML(planet)+"AMOUNT ="+result[1])
+				//setMessage("<br/><br/>I NEED HELP = "+objectToHTML(planet)+"AMOUNT ="+result[1])
 			}
 			else
 			{
-				result[1] = REST_POP - pop;
+				result[1] = 0 - pop;
 			}
 			result[2] = i;
 			break;
@@ -354,11 +481,32 @@ var inDanger = function(planet, context)
 		{
 			//setMessage("BORDER PROT")
 			result[0] = true;
-			result[1] = BORDER_POP-planet.population;
+			result[1] = PlanetPopulation.getMaxPopulation(planet.size) - planet.population;
 			result[2] = DANGER_RANGE; // Toutes les planètes envoient de l'aide
 			break;
 		}
 	};
+
+	if (debug)
+	{
+		setMessage("inDanger("+planet.id+") = ");
+
+		var lol ='<br/><div style="margin-left:4em">';
+
+		if (result.length == 0)
+		{
+			lol += "null";
+		}
+
+		for (var i = 0; i <= result.length - 1; i++) {
+			lol+= result[i];
+			lol+= "<br/>";
+		};
+
+		lol += "</div>";
+
+		setMessage(lol);
+	}
 	return result;
 }
 
@@ -375,6 +523,11 @@ var inBorder = function(planet,context)
 			result = true;
 		}
 	};
+
+	if (debug)
+	{
+		setMessage("inBorder("+planet.id+") = "+result+"<br/>");
+	}
 
 	return result;
 }
