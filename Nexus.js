@@ -487,7 +487,7 @@ var inDanger = function(planet, context)
 			result[2] = i;
 			break;
 		}
-		else if(inBorder(planet,context) && planet.population <= BORDER_POP)
+		else if(inBorder(planet,context) && planet.population <= PlanetPopulation.getMaxPopulation(planet.size))
 		{
 			//setMessage("BORDER PROT")
 			result[0] = true;

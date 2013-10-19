@@ -29,6 +29,9 @@
 
 	<div id="haxe:trace" class="trace" style="padding-left: 10px;position: fixed;left: 800px;top: 0;height: 900px;width: 1000px;overflow: auto;border-left: 5px solid black;"></div>
 		<button onclick="stats()">STATS</button>
+		<span id="win1" class="win1">0</span>
+        <span id="winratio" class="winratio">0</span>
+        <span id="win2" class="win2">0</span>
 		<script src="js/jquery-1.9.0.min.js"></script>
 		<script src="js/bean.js"></script>
 		<script src="js/easeljs-0.5.0.min.js"></script>
@@ -42,6 +45,27 @@
 			{
 				PlanetWars.init("ia1","ia1.js","ia2","ia2.js");
 				PlanetWars._renderer.start();
+				var score1 = document.getElementById("playerOneScore").innerHTML;
+				var score2 = document.getElementById("playerTwoScore").innerHTML;
+
+				var win1 = parseInt(document.getElementById("win1").innerHTML)
+				var win2 = parseInt(document.getElementById("win2").innerHTML)
+
+				if(score1 < score2)
+				{
+					win1++;
+					document.getElementById("win1").innerHTML = win1;
+
+				}
+				else
+				{
+					win2++
+					document.getElementById("win2").innerHTML = win2;
+				}
+				var ratio = win1/(win1+win2);
+				document.getElementById("winratio").innerHTML = ratio;
+
+
 			}
 		}
 
