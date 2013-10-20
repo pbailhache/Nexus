@@ -248,7 +248,10 @@ com.tamina.planetwars.core.GameEngine.prototype = {
 			bean.fire(com.tamina.planetwars.core.EventDispatcher.getInstance(),"turnUpdate");
 			this._currentTurn++;
 			if(this._isComputing && this._currentTurn >= this._maxNumTurn) {
-				if(this.playerOneScore > this.playerTwoScore) this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player1,"DUREE MAX ATTEINTE",this._player1,this._player2)); else this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player2,"DUREE MAX ATTEINTE",this._player1,this._player2));
+				if(this.playerOneScore > this.playerTwoScore) 
+					this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player1,"DUREE MAX ATTEINTE",this._player1,this._player2)); 
+				else s
+					this.endBattle(new com.tamina.planetwars.data.BattleResult(this.playerOneScore,this.playerTwoScore,this._currentTurn,this._player2,"DUREE MAX ATTEINTE",this._player1,this._player2));
 			}
 		}
 	}
@@ -316,7 +319,11 @@ com.tamina.planetwars.core.GameEngine.prototype = {
 		this.playerOneScore = 100;
 		this.playerTwoScore = 100;
 		this._turnTimer = new haxe.Timer(turnSpeed);
-		if(turnSpeed == 1) while(this._isComputing && this._currentTurn < this._maxNumTurn) this.computeCurrentTurn(); else this._turnTimer.run = $bind(this,this.retrieveIAOrders);
+		if(turnSpeed == 1) 
+			while(this._isComputing && this._currentTurn < this._maxNumTurn) 
+				this.computeCurrentTurn(); 
+		else 
+			this._turnTimer.run = $bind(this,this.retrieveIAOrders);
 	}
 	,__class__: com.tamina.planetwars.core.GameEngine
 }
@@ -753,7 +760,11 @@ com.tamina.planetwars.server.BattleRenderer.prototype = {
 	#     # #       #    #  #       
 	#     # ####### #     # ####### 
 	*/
-		if(!this._engine.get_isComputing()) this._engine.getBattleResult(this._data.firstPlayerHome.owner,this._data.secondPlayerHome.owner,this._data,2); else haxe.Log.trace("battle already started",{ fileName : "BattleRenderer.hx", lineNumber : 60, className : "com.tamina.planetwars.server.BattleRenderer", methodName : "start"});
+		if(!this._engine.get_isComputing()) 
+			this._engine.getBattleResult(this._data.firstPlayerHome.owner,this._data.secondPlayerHome.owner,this._data,2); 
+		else 
+			haxe.Log.trace("battle already started",{ fileName : "BattleRenderer.hx", lineNumber : 60, className : "com.tamina.planetwars.server.BattleRenderer", methodName : "start"});
+		return true;
 	/*
 	#     # ####### ######  ####### 
 	#     # #       #     # #       
